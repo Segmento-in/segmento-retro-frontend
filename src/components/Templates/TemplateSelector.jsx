@@ -88,7 +88,23 @@ function TemplateSelector({ onSelectTemplate, onClose }) {
     );
   });
 
-  const handleTemplateClick = (template) => {
+  const handleTemplateClick = async (template) => {
+    // If template doesn't have columns, try fetching them separately
+    if (!template.columns || template.columns.length === 0) {
+      try {
+        const response = await api.get(`/api/template-columns/template/${template.id}`);
+        const columns = response.content ? response.content : (Array.isArray(response) ? response : []);
+        
+        if (columns.length > 0) {
+          const templateWithColumns = { ...template, columns };
+          setSelectedTemplate(templateWithColumns);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to fetch columns separately:', err);
+      }
+    }
+    
     setSelectedTemplate(template);
   };
 

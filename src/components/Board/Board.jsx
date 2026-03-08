@@ -356,11 +356,10 @@ function Board() {
     try {
       setLoading(true);
 
-      // 1 — board + columns + all cards fired in parallel (3 requests total, not N+2)
-      const [boardData, columnsData, cardsData] = await Promise.all([
+      // Fetch board and columns first
+      const [boardData, columnsData] = await Promise.all([
         api.get(`/api/boards/${boardId}`),
         api.get(`/api/board-columns/board/${boardId}`),
-        api.get(`/api/cards/board/${boardId}`),
       ]);
 
       setBoard(boardData);
@@ -370,16 +369,21 @@ function Board() {
         : [];
       setColumns(sortedColumns);
 
-      // Group flat cards array into { columnId: [cards] }
+      // Fetch cards for each column separately (since backend doesn't return columnId)
       const cardsByColumn = {};
-      if (Array.isArray(cardsData)) {
-        cardsData.forEach((card) => {
-          const colId =
-            card.columnId != null ? String(card.columnId) : "undefined";
-          if (!cardsByColumn[colId]) cardsByColumn[colId] = [];
-          cardsByColumn[colId].push(card);
-        });
-      }
+      
+      await Promise.all(
+        sortedColumns.map(async (column) => {
+          try {
+            const columnCards = await api.get(`/api/cards/column/${column.id}`);
+            cardsByColumn[String(column.id)] = Array.isArray(columnCards) ? columnCards : [];
+          } catch (err) {
+            console.error(`Error fetching cards for column ${column.id}:`, err);
+            cardsByColumn[String(column.id)] = [];
+          }
+        })
+      );
+
       setCards(cardsByColumn);
     } catch (err) {
       setError(err.message || "Failed to load board");

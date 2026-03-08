@@ -137,6 +137,15 @@ export const templatesApi = {
   },
 
   /**
+   * Get default templates only
+   * @returns {Promise<Array>} Default templates array
+   */
+  getDefaultTemplates: async () => {
+    const response = await api.get("/api/templates/default");
+    return response.content ? response.content : response;
+  },
+
+  /**
    * Get templates by category
    * @param {string} category - Category name
    * @returns {Promise<Array>} Templates array
@@ -170,8 +179,17 @@ export const templatesApi = {
   },
 
   /**
-   * Create a new template
-   * @param {Object} templateData - Template data
+   * Get template by ID
+   * @param {number} templateId - Template ID
+   * @returns {Promise<Object>} Template with columns
+   */
+  getTemplateById: async (templateId) => {
+    return await api.get(`/api/templates/${templateId}`);
+  },
+
+  /**
+   * Create a new template (with columns)
+   * @param {Object} templateData - Template data including columns array
    * @returns {Promise<Object>} Created template
    */
   createTemplate: async (templateData) => {
@@ -179,12 +197,96 @@ export const templatesApi = {
   },
 
   /**
-   * Mark template as used
+   * Update a template (with columns)
+   * @param {number} templateId - Template ID
+   * @param {Object} templateData - Template data including columns array
+   * @returns {Promise<Object>} Updated template
+   */
+  updateTemplate: async (templateId, templateData) => {
+    return await api.put(`/api/templates/${templateId}`, templateData);
+  },
+
+  /**
+   * Delete a template
+   * @param {number} templateId - Template ID
+   * @returns {Promise<void>}
+   */
+  deleteTemplate: async (templateId) => {
+    return await api.delete(`/api/templates/${templateId}`);
+  },
+
+  /**
+   * Mark template as used (increment usage count)
    * @param {number} templateId - Template ID
    * @returns {Promise<void>}
    */
   useTemplate: async (templateId) => {
     return await api.post(`/api/templates/${templateId}/use`);
+  },
+};
+
+// Template Columns API
+export const templateColumnsApi = {
+  /**
+   * Get columns for a specific template
+   * @param {number} templateId - Template ID
+   * @returns {Promise<Array>} Template columns array
+   */
+  getColumnsByTemplate: async (templateId) => {
+    const response = await api.get(`/api/template-columns/template/${templateId}`);
+    return response.content ? response.content : response;
+  },
+
+  /**
+   * Get columns by category
+   * @param {string} category - Category name
+   * @returns {Promise<Array>} Template columns array
+   */
+  getColumnsByCategory: async (category) => {
+    const response = await api.get(`/api/template-columns/category/${encodeURIComponent(category)}`);
+    return response.content ? response.content : response;
+  },
+
+  /**
+   * Get columns by language
+   * @param {string} language - Language name
+   * @returns {Promise<Array>} Template columns array
+   */
+  getColumnsByLanguage: async (language) => {
+    const response = await api.get(`/api/template-columns/language/${encodeURIComponent(language)}`);
+    return response.content ? response.content : response;
+  },
+
+  /**
+   * Get columns by category and language
+   * @param {string} category - Category name
+   * @param {string} language - Language name
+   * @returns {Promise<Array>} Template columns array
+   */
+  getColumnsByCategoryAndLanguage: async (category, language) => {
+    const response = await api.get(
+      `/api/template-columns/category/${encodeURIComponent(category)}/language/${encodeURIComponent(language)}`
+    );
+    return response.content ? response.content : response;
+  },
+
+  /**
+   * Add a new column to an existing template
+   * @param {number} templateId - Template ID
+   * @param {Object} columnData - Column data { name: string, position: number }
+   * @returns {Promise<Object>} Created column
+   */
+  addColumn: async (templateId, columnData) => {
+    return await api.post(`/api/template-columns/${templateId}`, columnData);
+  },
+
+  /**
+   * Delete a template column
+   * @param {number} columnId - Column ID
+   * @returns {Promise<string>} Success message
+   */
+  deleteColumn: async (columnId) => {
+    return await api.delete(`/api/template-columns/${columnId}`);
   },
 };
 
