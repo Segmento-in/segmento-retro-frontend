@@ -15,6 +15,8 @@ import api from "../../api";
 import { useClickOutside } from "../../hooks";
 import "./board.css";
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
 const SORT_OPTIONS = [
   { value: "default", label: "Default Order" },
   { value: "newest", label: "Newest First" },
@@ -23,12 +25,18 @@ const SORT_OPTIONS = [
   { value: "za", label: "Z → A" },
 ];
 
+const MAX_VOTES = 6;
+
+// ─── Pure helpers ─────────────────────────────────────────────────────────────
+
 function applySortAndSearch(cards, search, sort) {
   let result = [...cards];
+
   if (search.trim()) {
     const q = search.trim().toLowerCase();
     result = result.filter((c) => (c.content || "").toLowerCase().includes(q));
   }
+
   switch (sort) {
     case "newest":
       result.sort((a, b) => (b.id || 0) - (a.id || 0));
@@ -45,15 +53,25 @@ function applySortAndSearch(cards, search, sort) {
     default:
       break;
   }
+
   return result;
 }
+
+function getCardFormsKey(boardId) {
+  return `cardForms_${boardId}`;
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SortDropdown({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useClickOutside(ref, () => setOpen(false), open);
 
-  const selected = SORT_OPTIONS.find((o) => o.value === value);
+  const selected = useMemo(
+    () => SORT_OPTIONS.find((o) => o.value === value),
+    [value],
+  );
 
   return (
     <div className="sort-dropdown" ref={ref}>
@@ -62,6 +80,7 @@ function SortDropdown({ value, onChange }) {
         <span className="btn-label">{selected?.label || "Sort"}</span>
         <FiChevronDown size={13} />
       </button>
+
       {open && (
         <div className="sort-dropdown-menu">
           {SORT_OPTIONS.map((opt) => (
@@ -83,7 +102,6 @@ function SortDropdown({ value, onChange }) {
   );
 }
 
-/* ── Mobile Nav Dropdown ── */
 function MobileNavMenu({
   onAddColumn,
   search,
@@ -96,27 +114,24 @@ function MobileNavMenu({
   const [showSortSub, setShowSortSub] = useState(false);
   const ref = useRef(null);
 
-  useClickOutside(
-    ref,
-    () => {
-      setOpen(false);
-      setShowSortSub(false);
-    },
-    open,
-  );
+  const closeAll = useCallback(() => {
+    setOpen(false);
+    setShowSortSub(false);
+  }, []);
+  useClickOutside(ref, closeAll, open);
 
   useEffect(() => {
-    function handleKey(e) {
-      if (e.key === "Escape") {
-        setOpen(false);
-        setShowSortSub(false);
-      }
-    }
+    const handleKey = (e) => {
+      if (e.key === "Escape") closeAll();
+    };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, []);
+  }, [closeAll]);
 
-  const selectedSort = SORT_OPTIONS.find((o) => o.value === sortBy);
+  const selectedSort = useMemo(
+    () => SORT_OPTIONS.find((o) => o.value === sortBy),
+    [sortBy],
+  );
 
   return (
     <div className="mobile-nav-menu" ref={ref}>
@@ -134,14 +149,13 @@ function MobileNavMenu({
 
       {open && (
         <>
-          {/* Backdrop */}
           <div
             className="mobile-menu-backdrop"
             onClick={() => setOpen(false)}
           />
 
           <div className="mobile-dropdown">
-            {/* Search row */}
+            {/* Search */}
             <div className="mobile-dropdown-section">
               <div className="mobile-search-wrapper">
                 <FiSearch className="mobile-search-icon" size={14} />
@@ -166,7 +180,7 @@ function MobileNavMenu({
 
             <div className="mobile-dropdown-divider" />
 
-            {/* Sort sub-menu trigger */}
+            {/* Sort */}
             <button
               className="mobile-dropdown-item has-sub"
               onClick={() => setShowSortSub((p) => !p)}
@@ -225,72 +239,86 @@ function MobileNavMenu({
   );
 }
 
+// ─── Board ────────────────────────────────────────────────────────────────────
+
 function Board() {
   const { boardId } = useParams();
   const navigate = useNavigate();
 
-  const [board, setBoard] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [columns, setColumns] = useState([]);
-
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("default");
-
-  const [showAddColumn, setShowAddColumn] = useState(false);
-  const [newColumnTitle, setNewColumnTitle] = useState("");
-  const [addingColumn, setAddingColumn] = useState(false);
-
-  const [editingCardId, setEditingCardId] = useState(null);
-  const [editValue, setEditValue] = useState("");
-
-  const [cardForms, setCardForms] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`cardForms_${boardId}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [cards, setCards] = useState({});
-  const [savingCard, setSavingCard] = useState(false);
-
-  const [openCommentsCardKey, setOpenCommentsCardKey] = useState(null);
-  const [commentsByCard, setCommentsByCard] = useState({});
-  const [commentInputs, setCommentInputs] = useState({});
-  const [postingCommentCard, setPostingCommentCard] = useState(null);
-
-  const [userVotesByCard, setUserVotesByCard] = useState({});
-  const [remainingVotes, setRemainingVotes] = useState(6);
-  const [cardVoteCounts, setCardVoteCounts] = useState({});
-
-  const [editingCommentId, setEditingCommentId] = useState(null);
-  const [editCommentValue, setEditCommentValue] = useState("");
-
-  const [openColumnMenu, setOpenColumnMenu] = useState(null);
-  const [editingColumnId, setEditingColumnId] = useState(null);
-  const [editColumnTitle, setEditColumnTitle] = useState("");
-  const columnMenuRef = useRef(null);
-
-  const [openCardMenu, setOpenCardMenu] = useState(null);
-  const cardMenuRef = useRef(null);
-
+  // ── Auth / role ──
   const name =
     localStorage.getItem("name") || localStorage.getItem("userName") || "User";
   const currentUserId = localStorage.getItem("userId");
   const userRole = localStorage.getItem("role") || "MEMBER";
 
-  const isCreator =
-    board &&
-    currentUserId &&
-    (String(board.userId) === String(currentUserId) ||
-      String(board.createdBy?.id) === String(currentUserId) ||
-      String(board.createdBy) === String(currentUserId) ||
-      String(board.ownerId) === String(currentUserId) ||
-      String(board.user_id) === String(currentUserId) ||
-      String(board.created_by) === String(currentUserId));
+  // ── Board / columns / cards ──
+  const [board, setBoard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [columns, setColumns] = useState([]);
+  const [cards, setCards] = useState({});
+
+  // ── Search / sort ──
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("default");
+
+  // ── Add column modal ──
+  const [showAddColumn, setShowAddColumn] = useState(false);
+  const [newColumnTitle, setNewColumnTitle] = useState("");
+  const [addingColumn, setAddingColumn] = useState(false);
+
+  // ── Inline card editing ──
+  const [editingCardId, setEditingCardId] = useState(null);
+  const [editValue, setEditValue] = useState("");
+
+  // ── Card input forms (persisted) ──
+  const [cardForms, setCardForms] = useState(() => {
+    try {
+      const saved = localStorage.getItem(getCardFormsKey(boardId));
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // ── Comments ──
+  const [openCommentsCardKey, setOpenCommentsCardKey] = useState(null);
+  const [commentsByCard, setCommentsByCard] = useState({});
+  const [commentInputs, setCommentInputs] = useState({});
+  const [postingCommentCard, setPostingCommentCard] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentValue, setEditCommentValue] = useState("");
+
+  // ── Votes ──
+  const [userVotesByCard, setUserVotesByCard] = useState({});
+  const [remainingVotes, setRemainingVotes] = useState(MAX_VOTES);
+  const [cardVoteCounts, setCardVoteCounts] = useState({});
+
+  // ── Column / card menus ──
+  const [openColumnMenu, setOpenColumnMenu] = useState(null);
+  const [editingColumnId, setEditingColumnId] = useState(null);
+  const [editColumnTitle, setEditColumnTitle] = useState("");
+  const [openCardMenu, setOpenCardMenu] = useState(null);
+  const columnMenuRef = useRef(null);
+  const cardMenuRef = useRef(null);
+
+  // ─── Derived ────────────────────────────────────────────────────────────────
+
+  const isCreator = useMemo(() => {
+    if (!board || !currentUserId) return false;
+    return [
+      board.userId,
+      board.createdBy?.id,
+      board.createdBy,
+      board.ownerId,
+      board.user_id,
+      board.created_by,
+    ].some((id) => id != null && String(id) === String(currentUserId));
+  }, [board, currentUserId]);
 
   const canManageBoard = userRole === "ADMIN" || isCreator;
+
+  // ─── Click-outside for menus ────────────────────────────────────────────────
 
   const closeMenus = useCallback(() => {
     setOpenColumnMenu(null);
@@ -299,77 +327,76 @@ function Board() {
   const menuRefs = useMemo(() => [columnMenuRef, cardMenuRef], []);
   useClickOutside(menuRefs, closeMenus);
 
-  useEffect(() => {
-    fetchBoard();
-  }, [boardId]);
-
-  useEffect(() => {
-    if (board && board.id && Object.keys(cards).length > 0) {
-      fetchUserVotingInfo();
-    }
-  }, [board, cards]);
+  // ─── Persist card forms ─────────────────────────────────────────────────────
 
   useEffect(() => {
     try {
-      localStorage.setItem(`cardForms_${boardId}`, JSON.stringify(cardForms));
-    } catch {}
+      localStorage.setItem(getCardFormsKey(boardId), JSON.stringify(cardForms));
+    } catch {
+      /* ignore quota errors */
+    }
   }, [cardForms, boardId]);
 
-  async function fetchBoard() {
+  // ─── Data fetching ──────────────────────────────────────────────────────────
+
+  // Fetches cards for specific columns — used after add/delete card
+  const fetchColumnCards = useCallback(async (columnId) => {
+    try {
+      const data = await api.get(`/api/cards/column/${columnId}`);
+      setCards((prev) => ({
+        ...prev,
+        [String(columnId)]: Array.isArray(data) ? data : [],
+      }));
+    } catch (err) {
+      console.error("Error fetching column cards:", err);
+    }
+  }, []);
+
+  const fetchBoard = useCallback(async () => {
     try {
       setLoading(true);
 
-      const boardData = await api.get(`/api/boards/${boardId}`);
+      // 1 — board + columns + all cards fired in parallel (3 requests total, not N+2)
+      const [boardData, columnsData, cardsData] = await Promise.all([
+        api.get(`/api/boards/${boardId}`),
+        api.get(`/api/board-columns/board/${boardId}`),
+        api.get(`/api/cards/board/${boardId}`),
+      ]);
+
       setBoard(boardData);
 
-      const columnsData = await api.get(`/api/board-columns/board/${boardId}`);
       const sortedColumns = Array.isArray(columnsData)
         ? columnsData.sort((a, b) => (a.position || 0) - (b.position || 0))
         : [];
       setColumns(sortedColumns);
-      await fetchAllCards(sortedColumns);
+
+      // Group flat cards array into { columnId: [cards] }
+      const cardsByColumn = {};
+      if (Array.isArray(cardsData)) {
+        cardsData.forEach((card) => {
+          const colId =
+            card.columnId != null ? String(card.columnId) : "undefined";
+          if (!cardsByColumn[colId]) cardsByColumn[colId] = [];
+          cardsByColumn[colId].push(card);
+        });
+      }
+      setCards(cardsByColumn);
     } catch (err) {
       setError(err.message || "Failed to load board");
     } finally {
       setLoading(false);
     }
-  }
+  }, [boardId]);
 
-  async function fetchAllCards(cols = []) {
+  const fetchUserVotingInfo = useCallback(async () => {
+    if (!currentUserId || !boardId) return;
     try {
-      const cardsByColumn = {};
-      if (cols && cols.length > 0) {
-        for (const col of cols) {
-          const data = await api.get(`/api/cards/column/${col.id}`);
-          cardsByColumn[String(col.id)] = Array.isArray(data) ? data : [];
-        }
-      } else {
-        const cardsData = await api.get(`/api/cards/board/${boardId}`);
-        if (Array.isArray(cardsData)) {
-          cardsData.forEach((card) => {
-            const colId =
-              card.columnId != null ? String(card.columnId) : "undefined";
-            if (!cardsByColumn[colId]) cardsByColumn[colId] = [];
-            cardsByColumn[colId].push(card);
-          });
-        }
-      }
-      setCards(cardsByColumn);
-    } catch (err) {
-      console.error("Error fetching cards:", err);
-      setCards({});
-    }
-  }
-  async function fetchUserVotingInfo() {
-    const userId = localStorage.getItem("userId");
-    if (!userId || !boardId) return;
+      const [remainingData, votesData] = await Promise.all([
+        api.get(`/api/votes/board/${boardId}/user/${currentUserId}/remaining`),
+        api.get(`/api/votes/board/${boardId}`),
+      ]);
 
-    try {
-      const remainingData = await api.get(
-        `/api/votes/board/${boardId}/user/${userId}/remaining`,
-      );
-      setRemainingVotes(remainingData.remaining || 6);
-      const votesData = await api.get(`/api/votes/board/${boardId}`);
+      setRemainingVotes(remainingData.remaining ?? MAX_VOTES);
 
       const voteCounts = {};
       const userVoteCounts = {};
@@ -377,11 +404,9 @@ function Board() {
       if (Array.isArray(votesData)) {
         votesData.forEach((vote) => {
           const cardId = vote.cardId || vote.card_id;
-          if (cardId) {
-            voteCounts[cardId] = (voteCounts[cardId] || 0) + 1;
-          }
           const voteUserId = vote.userId || vote.user_id;
-          if (voteUserId === parseInt(userId, 10) && cardId) {
+          if (cardId) voteCounts[cardId] = (voteCounts[cardId] || 0) + 1;
+          if (voteUserId === parseInt(currentUserId, 10) && cardId) {
             userVoteCounts[cardId] = (userVoteCounts[cardId] || 0) + 1;
           }
         });
@@ -392,125 +417,152 @@ function Board() {
     } catch (err) {
       console.error("Error fetching voting info:", err);
     }
-  }
-  async function addVote(cardId) {
-    const userId = localStorage.getItem("userId");
-    if (!userId) return alert("You must be logged in to vote");
+  }, [boardId, currentUserId]);
 
-    if (remainingVotes <= 0) {
-      return alert("You have used all your votes!");
-    }
-    const cardIdNum = parseInt(cardId, 10);
-    const userIdNum = parseInt(userId, 10);
-    const boardIdNum = parseInt(boardId, 10);
+  useEffect(() => {
+    fetchBoard();
+  }, [fetchBoard]);
 
-    try {
+  useEffect(() => {
+    if (board?.id && Object.keys(cards).length > 0) fetchUserVotingInfo();
+  }, [board, cards, fetchUserVotingInfo]);
+
+  // ─── Voting ─────────────────────────────────────────────────────────────────
+
+  const addVote = useCallback(
+    async (cardId) => {
+      if (!currentUserId) return alert("You must be logged in to vote");
+      if (remainingVotes <= 0) return alert("You have used all your votes!");
+
       const body = {
-        cardId: cardIdNum,
-        userId: userIdNum,
-        boardId: boardIdNum,
+        cardId: parseInt(cardId, 10),
+        userId: parseInt(currentUserId, 10),
+        boardId: parseInt(boardId, 10),
+      };
+
+      const applyOptimistic = () => {
+        setUserVotesByCard((p) => ({ ...p, [cardId]: (p[cardId] || 0) + 1 }));
+        setRemainingVotes((p) => p - 1);
+        setCardVoteCounts((p) => ({ ...p, [cardId]: (p[cardId] || 0) + 1 }));
       };
 
       try {
-        await api.post("/api/votes", body);
-        setUserVotesByCard((prev) => ({
-          ...prev,
-          [cardId]: (prev[cardId] || 0) + 1,
-        }));
-        setRemainingVotes((prev) => prev - 1);
-        setCardVoteCounts((prev) => ({
-          ...prev,
-          [cardId]: (prev[cardId] || 0) + 1,
-        }));
-      } catch {
-        await api.post(`/api/votes/card/${cardIdNum}/user/${userIdNum}`, {
-          boardId: boardIdNum,
-        });
-        setUserVotesByCard((prev) => ({
-          ...prev,
-          [cardId]: (prev[cardId] || 0) + 1,
-        }));
-        setRemainingVotes((prev) => prev - 1);
-        setCardVoteCounts((prev) => ({
-          ...prev,
-          [cardId]: (prev[cardId] || 0) + 1,
-        }));
+        try {
+          await api.post("/api/votes", body);
+        } catch {
+          await api.post(`/api/votes/card/${body.cardId}/user/${body.userId}`, {
+            boardId: body.boardId,
+          });
+        }
+        applyOptimistic();
+      } catch (err) {
+        console.error("Error adding vote:", err);
+        alert("Failed to add vote: " + err.message);
       }
-    } catch (err) {
-      console.error("Error adding vote:", err);
-      alert("Failed to add vote: " + err.message);
-    }
-  }
-  async function removeVote(cardId) {
-    const userId = localStorage.getItem("userId");
-    if (!userId) return alert("You must be logged in to vote");
+    },
+    [boardId, currentUserId, remainingVotes],
+  );
 
-    const userVoteCount = userVotesByCard[cardId] || 0;
-    if (userVoteCount === 0) {
-      return alert("You haven't voted on this card");
-    }
+  const removeVote = useCallback(
+    async (cardId) => {
+      if (!currentUserId) return alert("You must be logged in to vote");
+      if ((userVotesByCard[cardId] || 0) === 0)
+        return alert("You haven't voted on this card");
 
-    const voteData = {
-      cardId: parseInt(cardId, 10),
-      userId: parseInt(userId, 10),
-    };
+      try {
+        await api.delete("/api/votes", {
+          body: JSON.stringify({
+            cardId: parseInt(cardId, 10),
+            userId: parseInt(currentUserId, 10),
+          }),
+        });
+        setUserVotesByCard((p) => ({
+          ...p,
+          [cardId]: Math.max(0, (p[cardId] || 0) - 1),
+        }));
+        setRemainingVotes((p) => p + 1);
+        setCardVoteCounts((p) => ({
+          ...p,
+          [cardId]: Math.max(0, (p[cardId] || 0) - 1),
+        }));
+      } catch (err) {
+        console.error("Error removing vote:", err);
+        alert("Failed to remove vote: " + err.message);
+      }
+    },
+    [currentUserId, userVotesByCard],
+  );
 
-    try {
-      await api.delete("/api/votes", { body: JSON.stringify(voteData) });
-      setUserVotesByCard((prev) => ({
-        ...prev,
-        [cardId]: Math.max(0, (prev[cardId] || 0) - 1),
-      }));
-      setRemainingVotes((prev) => prev + 1);
-      setCardVoteCounts((prev) => ({
-        ...prev,
-        [cardId]: Math.max(0, (prev[cardId] || 0) - 1),
-      }));
-    } catch (err) {
-      console.error("Error removing vote:", err);
-      alert("Failed to remove vote: " + err.message);
-    }
-  }
+  // ─── Card forms ──────────────────────────────────────────────────────────────
 
-  function addCardForm(columnId) {
-    const formId = Date.now() + Math.random();
-    setCardForms((prev) => [...prev, { formId, columnId, input: "" }]);
-  }
+  const addCardForm = useCallback((columnId) => {
+    setCardForms((prev) => [
+      ...prev,
+      { formId: Date.now() + Math.random(), columnId, input: "" },
+    ]);
+  }, []);
 
-  function updateCardForm(formId, value) {
+  const updateCardForm = useCallback((formId, value) => {
     setCardForms((prev) =>
       prev.map((f) => (f.formId === formId ? { ...f, input: value } : f)),
     );
-  }
+  }, []);
 
-  function removeCardForm(formId) {
+  const removeCardForm = useCallback((formId) => {
     setCardForms((prev) => prev.filter((f) => f.formId !== formId));
-  }
+  }, []);
 
-  async function saveCard(formId, columnId, inputValue) {
-    if (!inputValue.trim()) return alert("Please enter something for the card");
-    setSavingCard(true);
-    try {
-      const userId = localStorage.getItem("userId");
-      const created = await api.post("/api/cards", {
-        content: inputValue,
-        columnId,
-        userId,
-        boardId,
-      });
+  const saveCard = useCallback(
+    async (formId, columnId, inputValue) => {
+      if (!inputValue.trim())
+        return alert("Please enter something for the card");
+
+      // Optimistic: show card instantly, no spinner needed
+      const tempId = `temp-${Date.now()}`;
+      const tempCard = { id: tempId, content: inputValue, columnId };
       removeCardForm(formId);
-      await fetchAllCards(columns);
-    } catch (err) {
-      alert("Error creating card: " + (err.message || "Unknown"));
-    } finally {
-      setSavingCard(false);
-    }
-  }
+      setCards((prev) => ({
+        ...prev,
+        [String(columnId)]: [...(prev[String(columnId)] || []), tempCard],
+      }));
 
-  async function addColumn() {
-    if (!canManageBoard) {
+      try {
+        const created = await api.post("/api/cards", {
+          content: inputValue,
+          columnId,
+          userId: currentUserId,
+          boardId,
+        });
+        // Swap temp card with real server card (gets real id, timestamps, etc.)
+        setCards((prev) => ({
+          ...prev,
+          [String(columnId)]: prev[String(columnId)].map((c) =>
+            c.id === tempId ? created : c,
+          ),
+        }));
+      } catch (err) {
+        // Rollback: remove temp card and restore the form
+        setCards((prev) => ({
+          ...prev,
+          [String(columnId)]: prev[String(columnId)].filter(
+            (c) => c.id !== tempId,
+          ),
+        }));
+        setCardForms((prev) => [
+          ...prev,
+          { formId, columnId, input: inputValue },
+        ]);
+        alert("Error creating card: " + (err.message || "Unknown"));
+      }
+    },
+    [boardId, currentUserId, removeCardForm],
+  );
+
+  // ─── Column CRUD ─────────────────────────────────────────────────────────────
+
+  const addColumn = useCallback(async () => {
+    if (!canManageBoard)
       return alert("Only the board creator or admin can add columns");
-    }
     if (!newColumnTitle.trim()) return alert("Please enter a column title");
     setAddingColumn(true);
     try {
@@ -519,7 +571,6 @@ function Board() {
         title: newColumnTitle.trim(),
         position: columns.length,
       });
-
       setNewColumnTitle("");
       setShowAddColumn(false);
       await fetchBoard();
@@ -528,53 +579,121 @@ function Board() {
     } finally {
       setAddingColumn(false);
     }
-  }
+  }, [boardId, canManageBoard, columns.length, fetchBoard, newColumnTitle]);
 
-  async function updateColumn(columnId) {
-    if (!canManageBoard) {
-      return alert("Only the board creator or admin can edit columns");
-    }
-    if (!editColumnTitle.trim()) return alert("Column title cannot be empty");
+  const updateColumn = useCallback(
+    async (columnId) => {
+      if (!canManageBoard)
+        return alert("Only the board creator or admin can edit columns");
+      if (!editColumnTitle.trim()) return alert("Column title cannot be empty");
+      try {
+        await api.put(`/api/board-columns/${columnId}`, {
+          title: editColumnTitle.trim(),
+        });
+        setEditingColumnId(null);
+        setEditColumnTitle("");
+        setOpenColumnMenu(null);
+        await fetchBoard();
+      } catch (err) {
+        console.error("Error updating column:", err);
+        alert("Error updating column: " + (err.message || "Unknown"));
+      }
+    },
+    [canManageBoard, editColumnTitle, fetchBoard],
+  );
 
+  const deleteColumn = useCallback(
+    async (columnId) => {
+      if (!canManageBoard)
+        return alert("Only the board creator or admin can delete columns");
+      if (
+        !window.confirm(
+          "Are you sure you want to delete this column? All cards in this column will also be deleted.",
+        )
+      )
+        return;
+      try {
+        await api.delete(`/api/board-columns/${columnId}`);
+        setColumns((prev) => prev.filter((col) => col.id !== columnId));
+        setCards((prev) => {
+          const updated = { ...prev };
+          delete updated[String(columnId)];
+          return updated;
+        });
+        setOpenColumnMenu(null);
+      } catch (err) {
+        alert("Error deleting column: " + (err.message || "Unknown"));
+      }
+    },
+    [canManageBoard],
+  );
+
+  // ─── Card CRUD ───────────────────────────────────────────────────────────────
+
+  const deleteCard = useCallback(async (cardId) => {
+    if (!window.confirm("Are you sure you want to delete this card?")) return;
     try {
-      await api.put(`/api/board-columns/${columnId}`, {
-        title: editColumnTitle.trim(),
-      });
-
-      setEditingColumnId(null);
-      setEditColumnTitle("");
-      setOpenColumnMenu(null);
-      await fetchBoard();
-    } catch (err) {
-      console.error("Error updating column:", err);
-      alert("Error updating column: " + (err.message || "Unknown"));
-    }
-  }
-
-  async function deleteColumn(columnId) {
-    if (!canManageBoard) {
-      return alert("Only the board creator or admin can delete columns");
-    }
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this column? All cards in this column will also be deleted.",
-    );
-    if (!confirmDelete) return;
-
-    try {
-      await api.delete(`/api/board-columns/${columnId}`);
-      setColumns((prev) => prev.filter((col) => col.id !== columnId));
+      await api.delete(`/api/cards/${cardId}`);
       setCards((prev) => {
-        const updated = { ...prev };
-        delete updated[String(columnId)];
+        const updated = {};
+        for (const colId in prev) {
+          updated[colId] = prev[colId].filter(
+            (c) => String(c.id) !== String(cardId),
+          );
+        }
         return updated;
       });
-      setOpenColumnMenu(null);
-    } catch (err) {
-      alert("Error deleting column: " + (err.message || "Unknown"));
+    } catch {
+      alert("Error deleting card");
     }
-  }
+  }, []);
 
-  async function fetchCommentsFor(cardId) {
+  const updateCard = useCallback(
+    async (cardId, columnId) => {
+      if (!editValue.trim()) return alert("Card cannot be empty");
+      try {
+        const updatedCard = await api.put(`/api/cards/${cardId}`, {
+          content: editValue,
+        });
+        setCards((prev) => ({
+          ...prev,
+          [String(columnId)]: prev[String(columnId)].map((card) =>
+            card.id === cardId
+              ? { ...card, content: updatedCard.content }
+              : card,
+          ),
+        }));
+        setEditingCardId(null);
+        setEditValue("");
+      } catch {
+        alert("Error updating card");
+      }
+    },
+    [editValue],
+  );
+
+  // ─── Board delete ────────────────────────────────────────────────────────────
+
+  const deleteBoard = useCallback(async () => {
+    if (!canManageBoard)
+      return alert("Only the board creator or admin can delete the board");
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this board? All columns and cards will be permanently deleted.",
+      )
+    )
+      return;
+    try {
+      await api.delete(`/api/boards/${boardId}`);
+      navigate("/retroDashboard");
+    } catch (err) {
+      alert("Error deleting board: " + (err.message || "Unknown"));
+    }
+  }, [boardId, canManageBoard, navigate]);
+
+  // ─── Comments ────────────────────────────────────────────────────────────────
+
+  const fetchCommentsFor = useCallback(async (cardId) => {
     try {
       const data = await api.get(`/api/comments/card/${cardId}`);
       setCommentsByCard((p) => ({
@@ -584,24 +703,75 @@ function Board() {
     } catch {
       setCommentsByCard((p) => ({ ...p, [String(cardId)]: [] }));
     }
-  }
+  }, []);
 
-  async function postComment(cardId) {
-    const key = String(cardId);
-    const content = (commentInputs[key] || "").trim();
-    if (!content) return alert("Please enter a comment");
-    setPostingCommentCard(key);
+  const postComment = useCallback(
+    async (cardId) => {
+      const key = String(cardId);
+      const content = (commentInputs[key] || "").trim();
+      if (!content) return alert("Please enter a comment");
+      setPostingCommentCard(key);
+      try {
+        await api.post("/api/comments", {
+          cardId,
+          userId: currentUserId,
+          content,
+        });
+        setCommentInputs((p) => ({ ...p, [key]: "" }));
+        await fetchCommentsFor(cardId);
+      } catch (err) {
+        alert("Error posting comment: " + (err.message || "Unknown"));
+      } finally {
+        setPostingCommentCard(null);
+      }
+    },
+    [commentInputs, currentUserId, fetchCommentsFor],
+  );
+
+  const deleteComment = useCallback(async (commentId, cardId) => {
+    if (!window.confirm("Delete this comment?")) return;
     try {
-      const userId = localStorage.getItem("userId");
-      await api.post("/api/comments", { cardId, userId, content });
-      setCommentInputs((p) => ({ ...p, [key]: "" }));
-      await fetchCommentsFor(cardId);
-    } catch (err) {
-      alert("Error posting comment: " + (err.message || "Unknown"));
-    } finally {
-      setPostingCommentCard(null);
+      await api.delete(`/api/comments/${commentId}`);
+      setCommentsByCard((prev) => ({
+        ...prev,
+        [String(cardId)]: prev[String(cardId)].filter(
+          (c) => c.id !== commentId,
+        ),
+      }));
+    } catch {
+      alert("Error deleting comment");
     }
-  }
+  }, []);
+
+  const updateComment = useCallback(
+    async (commentId, cardId) => {
+      if (!editCommentValue.trim()) return alert("Comment cannot be empty");
+      try {
+        const updatedComment = await api.put(`/api/comments/${commentId}`, {
+          content: editCommentValue,
+        });
+        setCommentsByCard((prev) => ({
+          ...prev,
+          [String(cardId)]: prev[String(cardId)].map((comment) =>
+            comment.id === commentId
+              ? {
+                  ...comment,
+                  content: updatedComment.content,
+                  message: updatedComment.content,
+                }
+              : comment,
+          ),
+        }));
+        setEditingCommentId(null);
+        setEditCommentValue("");
+      } catch {
+        alert("Error updating comment");
+      }
+    },
+    [editCommentValue],
+  );
+
+  // ─── Early returns ────────────────────────────────────────────────────────────
 
   if (loading)
     return (
@@ -628,112 +798,7 @@ function Board() {
       </div>
     );
 
-  async function deleteBoard() {
-    if (!canManageBoard) {
-      return alert("Only the board creator or admin can delete the board");
-    }
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this board? All columns and cards will be permanently deleted.",
-    );
-    if (!confirmDelete) return;
-
-    try {
-      await api.delete(`/api/boards/${boardId}`);
-      navigate("/retroDashboard");
-    } catch (err) {
-      alert("Error deleting board: " + (err.message || "Unknown"));
-    }
-  }
-
-  async function deleteCard(cardId) {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this card?",
-    );
-    if (!confirmDelete) return;
-
-    try {
-      await api.delete(`/api/cards/${cardId}`);
-
-      setCards((prev) => {
-        const updated = {};
-        for (const colId in prev) {
-          updated[colId] = prev[colId].filter(
-            (c) => String(c.id) !== String(cardId),
-          );
-        }
-        return updated;
-      });
-    } catch (err) {
-      alert("Error deleting card");
-    }
-  }
-
-  async function updateCard(cardId, columnId) {
-    if (!editValue.trim()) return alert("Card cannot be empty");
-
-    try {
-      const updatedCard = await api.put(`/api/cards/${cardId}`, {
-        content: editValue,
-      });
-
-      setCards((prev) => ({
-        ...prev,
-        [String(columnId)]: prev[String(columnId)].map((card) =>
-          card.id === cardId ? { ...card, content: updatedCard.content } : card,
-        ),
-      }));
-
-      setEditingCardId(null);
-      setEditValue("");
-    } catch (err) {
-      alert("Error updating card");
-    }
-  }
-  async function deleteComment(commentId, cardId) {
-    const confirmDelete = window.confirm("Delete this comment?");
-    if (!confirmDelete) return;
-
-    try {
-      await api.delete(`/api/comments/${commentId}`);
-
-      setCommentsByCard((prev) => ({
-        ...prev,
-        [String(cardId)]: prev[String(cardId)].filter(
-          (c) => c.id !== commentId,
-        ),
-      }));
-    } catch (err) {
-      alert("Error deleting comment");
-    }
-  }
-
-  async function updateComment(commentId, cardId) {
-    if (!editCommentValue.trim()) return alert("Comment cannot be empty");
-
-    try {
-      const updatedComment = await api.put(`/api/comments/${commentId}`, {
-        content: editCommentValue,
-      });
-
-      setCommentsByCard((prev) => ({
-        ...prev,
-        [String(cardId)]: prev[String(cardId)].map((comment) =>
-          comment.id === commentId
-            ? {
-                ...comment,
-                content: updatedComment.content,
-                message: updatedComment.content,
-              }
-            : comment,
-        ),
-      }));
-
-      setEditingCommentId(null);
-      setEditCommentValue("");
-    } catch (err) {
-      alert("Error updating comment");
-    }
-  }
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="board-container">
@@ -762,7 +827,6 @@ function Board() {
           <div className="board-logo">SegmentoRetro</div>
         </div>
 
-        {/* ── Desktop controls (hidden on mobile) ── */}
         <div className="board-header-right desktop-only">
           {canManageBoard && (
             <button
@@ -795,7 +859,6 @@ function Board() {
         </div>
       </header>
 
-      {/* Board Title Section */}
       <div className="board-title-section">
         <h1 className="board-page-title">{board.title}</h1>
         <div className="vote-counter">
@@ -803,7 +866,7 @@ function Board() {
           <span
             className={`vote-counter-value ${remainingVotes === 0 ? "vote-limit-reached" : ""}`}
           >
-            {remainingVotes} / 6
+            {remainingVotes} / {MAX_VOTES}
           </span>
           {remainingVotes === 0 && (
             <span className="vote-counter-warning">⚠️ No votes left</span>
@@ -821,6 +884,7 @@ function Board() {
 
               return (
                 <div key={colKey} className="board-column">
+                  {/* Column header */}
                   <div className="column-header">
                     {editingColumnId === column.id ? (
                       <div className="column-edit-form">
@@ -908,6 +972,7 @@ function Board() {
                     )}
                   </div>
 
+                  {/* Cards */}
                   <div className="column-items">
                     <button
                       className="add-item-btn"
@@ -935,14 +1000,12 @@ function Board() {
                               onClick={() =>
                                 saveCard(form.formId, form.columnId, form.input)
                               }
-                              disabled={savingCard}
                             >
-                              {savingCard ? "Saving..." : "✔"}
+                              ✔
                             </button>
                             <button
                               className="cancel-card-btn"
                               onClick={() => removeCardForm(form.formId)}
-                              disabled={savingCard}
                             >
                               ✕
                             </button>
@@ -1044,8 +1107,9 @@ function Board() {
                               </>
                             )}
                           </div>
+
+                          {/* Footer: votes + comments */}
                           <div className="card-footer">
-                            {/* Vote Buttons */}
                             <div className="vote-controls">
                               <button
                                 className="vote-btn"
@@ -1062,9 +1126,7 @@ function Board() {
                                 <FiThumbsUp size={13} />
                                 <span>{cardVoteCounts[realId] || 0}</span>
                               </button>
-
-                              {/* Show remove button if user has voted on this card */}
-                              {userVotesByCard[realId] > 0 && (
+                              {(userVotesByCard[realId] || 0) > 0 && (
                                 <button
                                   className="remove-vote-btn"
                                   onClick={() =>
@@ -1077,7 +1139,6 @@ function Board() {
                               )}
                             </div>
 
-                            {/* Comment Button */}
                             <button
                               className="comment-btn"
                               onClick={async () => {
@@ -1095,6 +1156,7 @@ function Board() {
                             </button>
                           </div>
 
+                          {/* Comments section */}
                           {openCommentsCardKey === cardKey && (
                             <div className="card-comments-section">
                               <textarea
@@ -1132,6 +1194,7 @@ function Board() {
                                     : "Post"}
                                 </button>
                               </div>
+
                               {commentsForCard.length > 0 && (
                                 <div className="comments-list">
                                   {commentsForCard.map((c, i) => (
@@ -1178,7 +1241,9 @@ function Board() {
                                             <div className="comment-written-by">
                                               by
                                               <br />
-                                              {name}
+                                              {c.userName ||
+                                                c.author?.name ||
+                                                name}
                                             </div>
                                           </div>
                                           <div className="comment-buttons">
@@ -1226,7 +1291,7 @@ function Board() {
         </div>
       </main>
 
-      {/* ── Add Column Modal ── */}
+      {/* Add Column Modal */}
       {showAddColumn && (
         <div className="modal-overlay" onClick={() => setShowAddColumn(false)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>

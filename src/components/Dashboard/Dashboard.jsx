@@ -7,21 +7,28 @@ import CreateTeamModal from "../Common/CreateTeamModal";
 import TeamCard from "../Common/TeamCard";
 import api from "../../api";
 import { getInitials, formatDate, PALETTE } from "../../utils";
+import { formatRelativeTime } from "../../utils/formatDate";
 import { useClickOutside } from "../../hooks";
 import "./dashboard.css";
 
 //Board Card
 
-function BoardCard({ board, onClick, onDelete }) {
+function BoardCard({ board, onClick, onDelete, currentUserId }) {
   const { bg, accent } = PALETTE[board.id % PALETTE.length];
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
   useClickOutside(menuRef, () => setShowMenu(false), showMenu);
 
+  const activeColumns = board.columns?.filter(col => !col.deleted) || [];
+  const isCurrentUser = board.createdBy?.id === currentUserId;
+  const creatorName = isCurrentUser ? "you" : (board.createdBy?.name || board.createdBy?.username || "Unknown");
+  const relativeTime = formatRelativeTime(board.createdAt);
+
   return (
     <div
       className="dash-card"
       style={{ background: bg, cursor: "pointer", position: "relative" }}
+      onClick={onClick}
     >
       <div className="dash-card-accent" style={{ background: accent }} />
 
@@ -61,31 +68,59 @@ function BoardCard({ board, onClick, onDelete }) {
         )}
       </div>
 
-      <div className="dash-card-body" onClick={onClick}>
-        <div className="dash-card-avatar" style={{ background: accent }}>
-          {getInitials(board.title)}
+      <div className="dash-card-body">
+        <div className="dash-card-header">
+          <div className="dash-card-avatar" style={{ background: accent }}>
+            {getInitials(board.title)}
+          </div>
+          <div className="dash-card-info">
+            <h3 className="dash-card-title">{board.title}</h3>
+            <div className="dash-card-creator">
+              <span className="creator-label">by</span> {creatorName}
+            </div>
+          </div>
         </div>
-        <div className="dash-card-info">
-          <h3 className="dash-card-title">{board.title}</h3>
-          {board.teamName ? (
-            <span className="dash-card-meta" style={{ color: accent }}>
-              <FiUsers
-                size={11}
-                style={{ marginRight: 3, verticalAlign: "middle" }}
-              />
-              {board.teamName}
-            </span>
-          ) : board.templateName ? (
-            <span className="dash-card-meta" style={{ color: accent }}>
-              {board.templateName}
-            </span>
-          ) : null}
-        </div>
+
+        {activeColumns.length > 0 && (
+          <div className="dash-card-columns">
+            <div className="columns-header">
+              <span className="columns-count">{activeColumns.length}</span>
+              <span className="columns-label">Column{activeColumns.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="columns-preview">
+              {activeColumns.slice(0, 3).map((col, idx) => (
+                <div key={col.id} className="column-tag" style={{ borderColor: accent }}>
+                  {col.title}
+                </div>
+              ))}
+              {activeColumns.length > 3 && (
+                <div className="column-tag column-tag-more" style={{ color: accent, borderColor: accent }}>
+                  +{activeColumns.length - 3}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {board.team && (
+          <div className="dash-card-team" style={{ color: accent }}>
+            <FiUsers size={12} />
+            <span>{board.team.name || board.teamName}</span>
+          </div>
+        )}
       </div>
 
-      {formatDate(board.createdAt) && (
-        <div className="dash-card-date">{formatDate(board.createdAt)}</div>
-      )}
+      <div className="dash-card-footer">
+        {relativeTime.text && (
+          <div className="dash-card-time-chip" style={{ 
+            background: `${relativeTime.color}18`,
+            color: relativeTime.color,
+            borderColor: `${relativeTime.color}50`
+          }}>
+            {relativeTime.text}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -742,6 +777,7 @@ function Dashboard() {
                     <BoardCard
                       key={board.id}
                       board={board}
+                      currentUserId={Number(localStorage.getItem("userId"))}
                       onClick={() => navigate(`/board/${board.id}`)}
                       onDelete={handleDeleteBoard}
                     />
