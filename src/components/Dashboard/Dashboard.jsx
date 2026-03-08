@@ -112,11 +112,13 @@ function BoardCard({ board, onClick, onDelete, currentUserId }) {
 
       <div className="dash-card-footer">
         {relativeTime.text && (
-          <div className="dash-card-time-chip" style={{ 
-            background: `${relativeTime.color}18`,
-            color: relativeTime.color,
-            borderColor: `${relativeTime.color}50`
-          }}>
+          <div 
+            className="dash-card-time-chip" 
+            style={{ 
+              background: `linear-gradient(135deg, ${relativeTime.color}25, ${relativeTime.color}35)`,
+              color: relativeTime.color
+            }}
+          >
             {relativeTime.text}
           </div>
         )}
@@ -454,11 +456,38 @@ function Dashboard() {
     setLoadingBoards(true);
     setBoardsError("");
     try {
-      const data = await api.get(`/api/boards/user/${userId}`, { params: { page: 0, size: 100 } });
-      // Handle paginated response - extract content array
-      const boardsArray = data.content ? data.content : (Array.isArray(data) ? data : []);
-      setUserBoards(boardsArray);
+      const data = await api.get(`/api/boards/user/${userId}`);
+      
+      // Handle both array and paginated response
+      let boardsArray = [];
+      if (Array.isArray(data)) {
+        boardsArray = data;
+      } else if (data.content && Array.isArray(data.content)) {
+        boardsArray = data.content;
+      } else if (data) {
+        boardsArray = [data];
+      }
+      
+      // Fetch full board details including columns for each board
+      const boardsWithColumns = await Promise.all(
+        boardsArray.map(async (board) => {
+          try {
+            const boardDetails = await api.get(`/api/boards/${board.id}`);
+            return {
+              ...board,
+              columns: boardDetails.columns || []
+            };
+          } catch (err) {
+            console.error(`Error fetching board ${board.id}:`, err);
+            // Return board without columns if fetch fails
+            return { ...board, columns: [] };
+          }
+        })
+      );
+      
+      setUserBoards(boardsWithColumns);
     } catch (err) {
+      console.error('Error in fetchUserBoards:', err);
       setBoardsError(err.message || "Failed to load boards");
     } finally {
       setLoadingBoards(false);
