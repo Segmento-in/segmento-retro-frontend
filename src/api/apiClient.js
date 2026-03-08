@@ -33,7 +33,21 @@ async function handleResponse(response) {
 const api = {
   async get(endpoint, options = {}) {
     try {
-      const url = `${API_BASE_URL}${endpoint}`;
+      // Build URL with query parameters if provided
+      let url = `${API_BASE_URL}${endpoint}`;
+      if (options.params) {
+        const params = new URLSearchParams();
+        Object.entries(options.params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            params.append(key, value);
+          }
+        });
+        const queryString = params.toString();
+        if (queryString) {
+          url += (endpoint.includes('?') ? '&' : '?') + queryString;
+        }
+      }
+      
       const response = await fetch(url, {
         method: "GET",
         ...options,

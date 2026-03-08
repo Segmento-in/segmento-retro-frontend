@@ -61,7 +61,9 @@ function TemplateSelector({ onSelectTemplate, onClose }) {
         data = await api.get("/api/templates");
       }
 
-      setTemplates(Array.isArray(data) ? data : []);
+      // Handle both paginated and non-paginated responses
+      const templatesArray = data.content ? data.content : (Array.isArray(data) ? data : []);
+      setTemplates(templatesArray);
     } catch (err) {
       console.error("Error fetching templates:", err);
 

@@ -147,8 +147,10 @@ function TeamsTab() {
     setLoading(true);
     setError("");
     try {
-      const data = await api.get("/api/teams");
-      setTeams(Array.isArray(data) ? data : []);
+      const data = await api.get("/api/teams", { params: { page: 0, size: 100 } });
+      // Handle paginated response
+      const teamsArray = data.content ? data.content : (Array.isArray(data) ? data : []);
+      setTeams(teamsArray);
     } catch (err) {
       setError(err.message || "Failed to load teams");
     } finally {
@@ -452,8 +454,10 @@ function Dashboard() {
     setLoadingBoards(true);
     setBoardsError("");
     try {
-      const data = await api.get(`/api/boards/user/${userId}`);
-      setUserBoards(Array.isArray(data) ? data : []);
+      const data = await api.get(`/api/boards/user/${userId}`, { params: { page: 0, size: 100 } });
+      // Handle paginated response - extract content array
+      const boardsArray = data.content ? data.content : (Array.isArray(data) ? data : []);
+      setUserBoards(boardsArray);
     } catch (err) {
       setBoardsError(err.message || "Failed to load boards");
     } finally {
@@ -483,7 +487,8 @@ function Dashboard() {
     setTemplatesError("");
     try {
       const data = await api.get("/api/templates");
-      const list = Array.isArray(data) ? data : [];
+      // Templates endpoint might not be paginated, handle both cases
+      const list = data.content ? data.content : (Array.isArray(data) ? data : []);
       setTemplates(list);
       if (!selectedTemplate && list.length > 0) setSelectedTemplate(list[0]);
     } catch (err) {
@@ -498,9 +503,11 @@ function Dashboard() {
     setLoadingTeams(true);
     setTeamsError("");
     try {
-      const data = await api.get("/api/teams");
-      setTeams(data);
-      if (!selectedTeam && data.length > 0) setSelectedTeam(data[0]);
+      const data = await api.get("/api/teams", { params: { page: 0, size: 100 } });
+      // Handle paginated response
+      const teamsArray = data.content ? data.content : (Array.isArray(data) ? data : []);
+      setTeams(teamsArray);
+      if (!selectedTeam && teamsArray.length > 0) setSelectedTeam(teamsArray[0]);
     } catch (err) {
       setTeamsError(err.message || "Failed to load teams");
     } finally {

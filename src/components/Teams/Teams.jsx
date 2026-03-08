@@ -27,8 +27,10 @@ function Teams() {
     setLoading(true);
     setError("");
     try {
-      const data = await api.get("/api/teams");
-      setTeams(Array.isArray(data) ? data : []);
+      const data = await api.get("/api/teams", { params: { page: 0, size: 100 } });
+      // Handle paginated response
+      const teamsArray = data.content ? data.content : (Array.isArray(data) ? data : []);
+      setTeams(teamsArray);
     } catch (err) {
       setError(err.message || "Failed to load teams");
     } finally {

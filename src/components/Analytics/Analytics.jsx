@@ -18,8 +18,9 @@ function Analytics() {
   async function fetchAnalytics() {
     try {
       const userId = localStorage.getItem("userId");
-      const data = await api.get(`/api/boards/user/${userId}`);
-      const boardsArray = Array.isArray(data) ? data : [];
+      const data = await api.get(`/api/boards/user/${userId}`, { params: { page: 0, size: 100 } });
+      // Handle paginated response
+      const boardsArray = data.content ? data.content : (Array.isArray(data) ? data : []);
 
       const boardsWithAnalytics = await Promise.all(
         boardsArray.map(async (board) => {
