@@ -22,32 +22,13 @@ function Analytics() {
       // Handle paginated response
       const boardsArray = data.content ? data.content : (Array.isArray(data) ? data : []);
 
-      const boardsWithAnalytics = await Promise.all(
-        boardsArray.map(async (board) => {
-          let cardCount = 0;
-          const contributors = new Set();
-
-          try {
-            const cards = await api.get(`/api/cards/board/${board.id}`);
-            if (Array.isArray(cards)) {
-              cardCount = cards.length;
-              cards.forEach((card) => {
-                if (card.userId) {
-                  contributors.add(card.userId);
-                }
-              });
-            }
-          } catch (err) {
-            console.error(`Error fetching cards for board ${board.id}:`, err);
-          }
-
-          return {
-            ...board,
-            cardCount,
-            contributorCount: contributors.size || 1,
-          };
-        })
-      );
+      // Use board data as-is - backend should provide card counts and contributor info
+      // If not available, we'll show 0 instead of making N additional API calls
+      const boardsWithAnalytics = boardsArray.map((board) => ({
+        ...board,
+        cardCount: board.cardCount || 0,
+        contributorCount: board.contributorCount || 1,
+      }));
 
       setBoards(boardsWithAnalytics);
     } catch (err) {

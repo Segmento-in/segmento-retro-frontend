@@ -32,6 +32,7 @@ function TemplateSelector({ onSelectTemplate, onClose }) {
   useEffect(() => {
     setSelectedTemplate(null); // Clear selected template when filters change
     fetchTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, selectedLanguage]);
 
   const fetchTemplates = async () => {

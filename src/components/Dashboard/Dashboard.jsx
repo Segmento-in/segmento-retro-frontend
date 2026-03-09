@@ -141,6 +141,7 @@ function TeamsTab() {
   useEffect(() => {
     loadTeams();
   }, []);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
@@ -150,7 +151,6 @@ function TeamsTab() {
     setError("");
     try {
       const data = await api.get("/api/teams", { params: { page: 0, size: 100 } });
-      // Handle paginated response
       const teamsArray = data.content ? data.content : (Array.isArray(data) ? data : []);
       setTeams(teamsArray);
     } catch (err) {
@@ -176,7 +176,7 @@ function TeamsTab() {
   const totalPages = Math.ceil(filteredTeams.length / itemsPerPage);
   const paginatedTeams = filteredTeams.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   return (
@@ -262,10 +262,10 @@ function TeamsTab() {
               </button>
             )}
             {paginatedTeams.map((team, idx) => (
-              <TeamCard
-                key={team.id}
-                team={team}
-                idx={(currentPage - 1) * itemsPerPage + idx}
+              <TeamCard 
+                key={team.id} 
+                team={team} 
+                idx={(currentPage - 1) * itemsPerPage + idx} 
               />
             ))}
           </div>
@@ -284,9 +284,7 @@ function TeamsTab() {
               </div>
               <button
                 className="pagination-btn"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
               >
                 Next →
@@ -439,6 +437,7 @@ function Dashboard() {
   useEffect(() => {
     fetchUserBoards();
   }, []);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
@@ -447,6 +446,10 @@ function Dashboard() {
     if (showCreateBoard) {
       ensureTemplatesLoaded();
       ensureTeamsLoaded();
+      // Set default team if not selected
+      if (!selectedTeam && teams.length > 0) {
+        setSelectedTeam(teams[0]);
+      }
     }
   }, [showCreateBoard]);
 
@@ -468,24 +471,8 @@ function Dashboard() {
         boardsArray = [data];
       }
       
-      // Fetch full board details including columns for each board
-      const boardsWithColumns = await Promise.all(
-        boardsArray.map(async (board) => {
-          try {
-            const boardDetails = await api.get(`/api/boards/${board.id}`);
-            return {
-              ...board,
-              columns: boardDetails.columns || []
-            };
-          } catch (err) {
-            console.error(`Error fetching board ${board.id}:`, err);
-            // Return board without columns if fetch fails
-            return { ...board, columns: [] };
-          }
-        })
-      );
-      
-      setUserBoards(boardsWithColumns);
+      // Use boards as-is - backend should return complete data
+      setUserBoards(boardsArray);
     } catch (err) {
       console.error('Error in fetchUserBoards:', err);
       setBoardsError(err.message || "Failed to load boards");
@@ -557,11 +544,25 @@ function Dashboard() {
     setCreating(true);
     try {
       const userId = localStorage.getItem("userId");
+      
+      // Validate required fields
+      if (!boardTitle.trim()) {
+        setBoardError("Board title is required");
+        setCreating(false);
+        return;
+      }
+      
+      if (!selectedTeam?.id) {
+        setBoardError("Please select a team");
+        setCreating(false);
+        return;
+      }
+      
       const board = await api.post("/api/boards", {
-        title: boardTitle,
+        title: boardTitle.trim(),
         templateId: selectedTemplate?.id ?? null,
         userId: userId ? Number(userId) : undefined,
-        teamId: selectedTeam?.id,
+        teamId: selectedTeam.id,
       });
 
       if (selectedTemplate?.id) {
@@ -596,11 +597,56 @@ function Dashboard() {
       board.templateName?.toLowerCase().includes(query)
     );
   });
+
   const totalPages = Math.ceil(filteredBoards.length / itemsPerPage);
-  const paginatedBoards = filteredBoards.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
+  const paginatedBoards = useMemo(() => {
+    return filteredBoards.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredBoards, currentPage, itemsPerPage]);
+
+  // Memoize the board IDs to avoid unnecessary re-fetches
+  const paginatedBoardIds = useMemo(
+    () => paginatedBoards.map(b => b.id).join(','),
+    [paginatedBoards]
   );
+
+  // Fetch columns for currently visible boards (paginated)
+  useEffect(() => {
+    async function fetchColumnsForVisibleBoards() {
+      // Only fetch if we have boards without columns
+      const boardsNeedingColumns = paginatedBoards.filter(board => !board.columns);
+      
+      if (boardsNeedingColumns.length === 0) return;
+
+      try {
+        // Fetch columns for each visible board
+        const columnsPromises = boardsNeedingColumns.map(board =>
+          api.get(`/api/board-columns/board/${board.id}`)
+            .then(columns => ({ boardId: board.id, columns }))
+            .catch(err => {
+              console.error(`Failed to fetch columns for board ${board.id}:`, err);
+              return { boardId: board.id, columns: [] };
+            })
+        );
+
+        const results = await Promise.all(columnsPromises);
+
+        // Update boards with their columns
+        setUserBoards(prevBoards => 
+          prevBoards.map(board => {
+            const result = results.find(r => r.boardId === board.id);
+            return result ? { ...board, columns: result.columns } : board;
+          })
+        );
+      } catch (err) {
+        console.error('Error fetching columns for visible boards:', err);
+      }
+    }
+
+    fetchColumnsForVisibleBoards();
+  }, [paginatedBoardIds]);
 
   const canManage = userRole === "ADMIN" || userRole === "MANAGER";
 
@@ -834,9 +880,7 @@ function Dashboard() {
                     </div>
                     <button
                       className="pagination-btn"
-                      onClick={() =>
-                        setCurrentPage((p) => Math.min(totalPages, p + 1))
-                      }
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
                     >
                       Next →

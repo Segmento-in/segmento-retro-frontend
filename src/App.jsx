@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { ProtectedRoute } from "./routes";
 import Landing from "./components/Landing/Landing";
 import Register from "./components/Register/Register";
@@ -7,8 +7,14 @@ import Board from "./components/Board/Board";
 import Analytics from "./components/Analytics/Analytics";
 import Teams from "./components/Teams/Teams";
 import Integrations from "./components/Integrations/Integrations";
+import TeamSlackSettings from "./components/Integrations/TeamSlackSettings";
 import JoinPage from "./components/Join/JoinPage";
 import MagicLogin from "./components/MagicLogin/MagicLogin";
+
+function TeamSlackSettingsWrapper() {
+  const { teamId } = useParams();
+  return <TeamSlackSettings teamId={teamId} />;
+}
 
 function App() {
   return (
@@ -55,6 +61,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Integrations />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teams/:teamId/slack-settings"
+          element={
+            <ProtectedRoute>
+              <TeamSlackSettingsWrapper />
             </ProtectedRoute>
           }
         />

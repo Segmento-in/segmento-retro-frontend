@@ -90,6 +90,25 @@ export const teamsApi = {
   createTeam: async (teamData) => {
     return await api.post("/api/teams", teamData);
   },
+
+  /**
+   * Get team Slack webhook URL
+   * @param {number} teamId - Team ID
+   * @returns {Promise<Object>} Webhook data
+   */
+  getSlackWebhook: async (teamId) => {
+    return await api.get(`/api/teams/${teamId}/slack-webhook`);
+  },
+
+  /**
+   * Update team Slack webhook URL
+   * @param {number} teamId - Team ID
+   * @param {Object} webhookData - Webhook data { webhookUrl: string }
+   * @returns {Promise<Object>} Updated webhook data
+   */
+  updateSlackWebhook: async (teamId, webhookData) => {
+    return await api.put(`/api/teams/${teamId}/slack-webhook`, webhookData);
+  },
 };
 
 // Users API
@@ -366,7 +385,7 @@ export const columnsApi = {
    * @returns {Promise<Object>} Updated column
    */
   updateColumn: async (columnId, columnData) => {
-    return await api.put(`/api/board-columns/${columnId}`, columnData);
+    return await api.patch(`/api/board-columns/${columnId}`, columnData);
   },
 
   /**

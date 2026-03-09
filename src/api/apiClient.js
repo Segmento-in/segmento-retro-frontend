@@ -1,6 +1,9 @@
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
+// Request deduplication cache
+const pendingRequests = new Map();
+
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
   return {
@@ -30,6 +33,12 @@ async function handleResponse(response) {
 
   return data;
 }
+
+// Generate cache key for request deduplication
+function getCacheKey(method, url) {
+  return `${method}:${url}`;
+}
+
 const api = {
   async get(endpoint, options = {}) {
     try {
@@ -47,16 +56,43 @@ const api = {
           url += (endpoint.includes('?') ? '&' : '?') + queryString;
         }
       }
+
+      // Check if same request is already pending (deduplication)
+      const cacheKey = getCacheKey('GET', url);
+      if (pendingRequests.has(cacheKey)) {
+        console.log('🔄 Reusing pending request:', cacheKey);
+        return await pendingRequests.get(cacheKey);
+      }
       
-      const response = await fetch(url, {
-        method: "GET",
-        ...options,
-        headers: {
-          ...getAuthHeaders(),
-          ...(options.headers || {}),
-        },
-      });
-      return await handleResponse(response);
+      // Log new request
+      console.log('🚀 New API request:', cacheKey);
+      
+      // Create new request promise
+      const requestPromise = (async () => {
+        try {
+          const startTime = performance.now();
+          const response = await fetch(url, {
+            method: "GET",
+            ...options,
+            headers: {
+              ...getAuthHeaders(),
+              ...(options.headers || {}),
+            },
+          });
+          const result = await handleResponse(response);
+          const endTime = performance.now();
+          console.log(`✅ Request completed in ${(endTime - startTime).toFixed(0)}ms:`, cacheKey);
+          return result;
+        } finally {
+          // Remove from pending requests after completion
+          pendingRequests.delete(cacheKey);
+        }
+      })();
+
+      // Store pending request
+      pendingRequests.set(cacheKey, requestPromise);
+      
+      return await requestPromise;
     } catch (error) {
       console.error("GET request failed:", endpoint, error);
       throw error;
@@ -99,6 +135,26 @@ const api = {
       return await handleResponse(response);
     } catch (error) {
       console.error("PUT request failed:", endpoint, error);
+      throw error;
+    }
+  },
+
+  /*PATCH request*/
+  async patch(endpoint, body, options = {}) {
+    try {
+      const url = `${API_BASE_URL}${endpoint}`;
+      const response = await fetch(url, {
+        method: "PATCH",
+        ...options,
+        headers: {
+          ...getAuthHeaders(),
+          ...(options.headers || {}),
+        },
+        body: JSON.stringify(body),
+      });
+      return await handleResponse(response);
+    } catch (error) {
+      console.error("PATCH request failed:", endpoint, error);
       throw error;
     }
   },

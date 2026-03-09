@@ -66,7 +66,7 @@
   align-items: center;
 }
 
-.btn-nav-login {
+.btn-nav-templates {
   background: none;
   border: none;
   color: #6b7280;
@@ -79,12 +79,12 @@
   font-family: inherit;
 }
 
-.btn-nav-login:hover {
+.btn-nav-templates:hover {
   color: #1f2937;
   background: #f3f4f6;
 }
 
-.btn-nav-signup {
+.btn-nav-primary {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
@@ -96,9 +96,10 @@
   transition: all 0.3s ease;
   font-family: inherit;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  white-space: nowrap;
 }
 
-.btn-nav-signup:hover {
+.btn-nav-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
@@ -321,7 +322,7 @@
 }
 
 .features-container {
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
@@ -342,6 +343,7 @@
 .feature-item {
   display: flex;
   gap: 20px;
+  align-items: flex-start;
 }
 
 .feature-icon-wrapper {
@@ -368,6 +370,7 @@
 
 .feature-content {
   flex: 1;
+  min-width: 0;
 }
 
 .feature-name {
@@ -607,6 +610,16 @@
     gap: 32px;
   }
 
+  .feature-icon-wrapper {
+    width: 44px;
+    height: 44px;
+  }
+
+  .feature-icon {
+    width: 22px;
+    height: 22px;
+  }
+
   .how-steps {
     grid-template-columns: 1fr;
     gap: 32px;
@@ -649,8 +662,18 @@
   }
 
   .nav-actions {
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .btn-nav-templates {
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+
+  .btn-nav-primary {
+    padding: 8px 16px;
+    font-size: 13px;
   }
 
   .hero-section {
@@ -678,15 +701,18 @@
   }
 
   .nav-actions {
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: nowrap;
   }
 
-  .btn-nav-login,
-  .btn-nav-signup {
-    padding: 8px 14px;
-    font-size: 13px;
+  .btn-nav-templates {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .btn-nav-primary {
+    padding: 7px 14px;
+    font-size: 12px;
   }
 
   .hero-section {
@@ -731,14 +757,26 @@
     font-size: 14px;
   }
 
-  .feature-card {
-    padding: 24px 20px;
+  .feature-icon-wrapper {
+    width: 40px;
+    height: 40px;
   }
 
   .feature-icon {
-    width: 48px;
-    height: 48px;
-    font-size: 24px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .feature-name {
+    font-size: 16px;
+  }
+
+  .feature-text {
+    font-size: 14px;
+  }
+
+  .feature-card {
+    padding: 24px 20px;
   }
 
   .feature-title {

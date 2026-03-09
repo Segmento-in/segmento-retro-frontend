@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FiUser, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import api from "../../api";
 import "./register.css";
 
 function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [mode, setMode] = useState("register");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -15,13 +16,16 @@ function Register() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  // Get the page they were trying to access (e.g., /board/42)
+  const from = location.state?.from?.pathname || "/retroDashboard";
+
   // Redirect if user is already logged in
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      navigate("/retroDashboard", { replace: true });
+      navigate(from, { replace: true });
     }
-  }, [navigate]);
+  }, [navigate, from]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -69,7 +73,8 @@ function Register() {
           console.error("Failed to decode JWT payload", e);
         }
 
-        navigate("/retroDashboard");
+        // Redirect to the page they were trying to access
+        navigate(from, { replace: true });
       } else {
         setMode("login");
       }
@@ -84,6 +89,12 @@ function Register() {
     <div className="app auth-app">
       <main className="auth-main">
         <div className="auth-card">
+          {location.state?.from && (
+            <div className="auth-info-message">
+              Please log in to access the board
+            </div>
+          )}
+          
           <h1>{mode === "register" ? "Create account" : "Log in"}</h1>
           <p className="auth-subtitle">
             {mode === "register"

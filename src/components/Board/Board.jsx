@@ -102,49 +102,21 @@ function SortDropdown({ value, onChange }) {
   );
 }
 
-function MobileNavMenu({
-  onAddColumn,
-  search,
-  setSearch,
-  sortBy,
-  setSortBy,
-  canManageBoard,
-}) {
+function MobileNavMenu({ navigate }) {
   const [open, setOpen] = useState(false);
-  const [showSortSub, setShowSortSub] = useState(false);
   const ref = useRef(null);
 
-  const closeAll = useCallback(() => {
-    setOpen(false);
-    setShowSortSub(false);
-  }, []);
-  useClickOutside(ref, closeAll, open);
-
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.key === "Escape") closeAll();
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [closeAll]);
-
-  const selectedSort = useMemo(
-    () => SORT_OPTIONS.find((o) => o.value === sortBy),
-    [sortBy],
-  );
+  useClickOutside(ref, () => setOpen(false), open);
 
   return (
     <div className="mobile-nav-menu" ref={ref}>
       <button
         className={`mobile-menu-btn ${open ? "active" : ""}`}
-        onClick={() => {
-          setOpen((p) => !p);
-          setShowSortSub(false);
-        }}
+        onClick={() => setOpen((p) => !p)}
         aria-label="Open menu"
         aria-expanded={open}
       >
-        {open ? <FiX size={20} /> : <FiMenu size={20} />}
+        {open ? <FiX size={18} /> : <FiMenu size={18} />}
       </button>
 
       {open && (
@@ -155,83 +127,15 @@ function MobileNavMenu({
           />
 
           <div className="mobile-dropdown">
-            {/* Search */}
-            <div className="mobile-dropdown-section">
-              <div className="mobile-search-wrapper">
-                <FiSearch className="mobile-search-icon" size={14} />
-                <input
-                  className="mobile-search-input"
-                  type="text"
-                  placeholder="Search cards..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  autoFocus
-                />
-                {search && (
-                  <button
-                    className="mobile-search-clear"
-                    onClick={() => setSearch("")}
-                  >
-                    <FiX size={12} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="mobile-dropdown-divider" />
-
-            {/* Sort */}
             <button
-              className="mobile-dropdown-item has-sub"
-              onClick={() => setShowSortSub((p) => !p)}
+              className="mobile-dropdown-item"
+              onClick={() => {
+                navigate("/retroDashboard");
+                setOpen(false);
+              }}
             >
-              <span className="mobile-item-icon">
-                <FiSliders size={15} />
-              </span>
-              <span className="mobile-item-label">
-                Sort: <strong>{selectedSort?.label}</strong>
-              </span>
-              <FiChevronDown
-                size={13}
-                className={`mobile-sub-chevron ${showSortSub ? "rotated" : ""}`}
-              />
+              <span className="mobile-item-label">← Back to Dashboard</span>
             </button>
-
-            {showSortSub && (
-              <div className="mobile-sort-sub">
-                {SORT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    className={`mobile-sort-item ${sortBy === opt.value ? "active" : ""}`}
-                    onClick={() => {
-                      setSortBy(opt.value);
-                      setShowSortSub(false);
-                    }}
-                  >
-                    {opt.label}
-                    {sortBy === opt.value && <FiCheck size={12} />}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="mobile-dropdown-divider" />
-
-            {/* Add Column */}
-            {canManageBoard && (
-              <button
-                className="mobile-dropdown-item primary"
-                onClick={() => {
-                  setOpen(false);
-                  onAddColumn();
-                }}
-              >
-                <span className="mobile-item-icon">
-                  <FiPlus size={15} />
-                </span>
-                <span className="mobile-item-label">Add Column</span>
-              </button>
-            )}
           </div>
         </>
       )}
@@ -591,7 +495,7 @@ function Board() {
         return alert("Only the board creator or admin can edit columns");
       if (!editColumnTitle.trim()) return alert("Column title cannot be empty");
       try {
-        await api.put(`/api/board-columns/${columnId}`, {
+        await api.patch(`/api/board-columns/${columnId}`, {
           title: editColumnTitle.trim(),
         });
         setEditingColumnId(null);
@@ -808,39 +712,32 @@ function Board() {
     <div className="board-container">
       <header className="board-header">
         <div className="mobile-only">
-          <MobileNavMenu
-            onAddColumn={() => setShowAddColumn(true)}
-            search={search}
-            setSearch={setSearch}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            canManageBoard={canManageBoard}
-          />
+          <MobileNavMenu navigate={navigate} />
         </div>
 
         <div className="board-header-left">
-          {userRole === "MEMBER" && (
-            <button
-              className="back-to-dashboard-btn"
-              onClick={() => navigate("/retroDashboard")}
-              title="Back to Dashboard"
-            >
-              ← Dashboard
-            </button>
-          )}
-          <div className="board-logo">SegmentoRetro</div>
+          <button
+            className="back-to-dashboard-btn desktop-only"
+            onClick={() => navigate("/retroDashboard")}
+            title="Back to Dashboard"
+          >
+            ← Dashboard
+          </button>
+          <div className="board-logo">{board.title}</div>
         </div>
 
-        <div className="board-header-right desktop-only">
-          {canManageBoard && (
-            <button
-              className="add-column-btn"
-              onClick={() => setShowAddColumn(true)}
-            >
-              <FiPlus size={14} />
-              <span className="btn-label">Add Column</span>
-            </button>
-          )}
+        <div className="board-header-right">
+          <div className="vote-counter">
+            <span className="vote-counter-value">
+              {remainingVotes} / {MAX_VOTES}
+            </span>
+            <span className="vote-counter-label">votes</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="board-filters-section">
+        <div className="filters-left">
           <div className="board-search-wrapper">
             <FiSearch className="board-search-icon" size={14} />
             <input
@@ -855,27 +752,22 @@ function Board() {
                 className="board-search-clear"
                 onClick={() => setSearch("")}
               >
-                ✕
+                <FiX size={14} />
               </button>
             )}
           </div>
           <SortDropdown value={sortBy} onChange={setSortBy} />
         </div>
-      </header>
-
-      <div className="board-title-section">
-        <h1 className="board-page-title">{board.title}</h1>
-        <div className="vote-counter">
-          <span className="vote-counter-label">Votes Remaining:</span>
-          <span
-            className={`vote-counter-value ${remainingVotes === 0 ? "vote-limit-reached" : ""}`}
+        
+        {canManageBoard && (
+          <button
+            className="add-column-btn"
+            onClick={() => setShowAddColumn(true)}
           >
-            {remainingVotes} / {MAX_VOTES}
-          </span>
-          {remainingVotes === 0 && (
-            <span className="vote-counter-warning">⚠️ No votes left</span>
-          )}
-        </div>
+            <FiPlus size={14} />
+            <span>Add Column</span>
+          </button>
+        )}
       </div>
 
       <main className="board-main">

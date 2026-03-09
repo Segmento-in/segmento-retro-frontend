@@ -13,7 +13,7 @@ function Teams() {
   const [showCreate, setShowCreate] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 18;
+  const itemsPerPage = 6;
 
   useEffect(() => {
     loadTeams();
@@ -27,9 +27,15 @@ function Teams() {
     setLoading(true);
     setError("");
     try {
-      const data = await api.get("/api/teams", { params: { page: 0, size: 100 } });
+      const data = await api.get("/api/teams", {
+        params: { page: 0, size: 100 },
+      });
       // Handle paginated response
-      const teamsArray = data.content ? data.content : (Array.isArray(data) ? data : []);
+      const teamsArray = data.content
+        ? data.content
+        : Array.isArray(data)
+          ? data
+          : [];
       setTeams(teamsArray);
     } catch (err) {
       setError(err.message || "Failed to load teams");
@@ -156,9 +162,7 @@ function Teams() {
               </div>
               <button
                 className="pagination-btn"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
               >
                 Next →

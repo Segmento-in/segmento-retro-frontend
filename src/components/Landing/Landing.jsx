@@ -8,13 +8,15 @@ function Landing() {
   const navigate = useNavigate();
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  
+  // Check if user is logged in
+  const isLoggedIn = !!localStorage.getItem("token");
 
-  const handleAuthAction = (path) => {
-    const token = localStorage.getItem("token");
-    if (token) {
+  const handleAuthAction = () => {
+    if (isLoggedIn) {
       navigate("/retroDashboard");
     } else {
-      navigate(path);
+      navigate("/register");
     }
   };
 
@@ -27,22 +29,16 @@ function Landing() {
           <div className="nav-logo">SegmentoRetro</div>
           <div className="nav-actions">
             <button
-              className="btn-nav-login"
-              onClick={() => handleAuthAction("/login")}
-            >
-              Sign in
-            </button>
-            <button
-              className="btn-nav-signup"
-              onClick={() => handleAuthAction("/register")}
-            >
-              Try for free
-            </button>
-            <button
               onClick={() => setShowTemplateSelector(true)}
-              className="btn-nav-signup"
+              className="btn-nav-templates"
             >
-              Explore Templates
+              Templates
+            </button>
+            <button
+              className="btn-nav-primary"
+              onClick={handleAuthAction}
+            >
+              {isLoggedIn ? "Go to Dashboard" : "Get Started"}
             </button>
           </div>
         </div>
@@ -73,17 +69,19 @@ function Landing() {
           <div className="hero-cta">
             <button
               className="btn-hero-primary"
-              onClick={() => handleAuthAction("/register")}
+              onClick={handleAuthAction}
             >
-              Start a retrospective
+              {isLoggedIn ? "Go to Dashboard" : "Start a retrospective"}
               <FiArrowRight size={18} />
             </button>
-            <button
-              className="btn-hero-secondary"
-              onClick={() => handleAuthAction("/login")}
-            >
-              Sign in
-            </button>
+            {!isLoggedIn && (
+              <button
+                className="btn-hero-secondary"
+                onClick={() => navigate("/login")}
+              >
+                Sign in
+              </button>
+            )}
           </div>
           {/* Hero Image - Board Preview */}
           <div className="hero-board">
@@ -174,6 +172,18 @@ function Landing() {
                 </p>
               </div>
             </div>
+
+            <div className="feature-item">
+              <div className="feature-icon-wrapper">
+                <FiArrowRight className="feature-icon" />
+              </div>
+              <div className="feature-content">
+                <h3 className="feature-name">Action-oriented</h3>
+                <p className="feature-text">
+                  Turn insights into action items. Track progress and follow through.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -218,9 +228,9 @@ function Landing() {
           </p>
           <button
             className="btn-cta-primary"
-            onClick={() => handleAuthAction("/register")}
+            onClick={handleAuthAction}
           >
-            Get started for free
+            {isLoggedIn ? "Go to Dashboard" : "Get started for free"}
             <FiArrowRight size={18} />
           </button>
         </div>
