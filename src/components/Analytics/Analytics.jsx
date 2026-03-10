@@ -32,7 +32,7 @@ function Analytics() {
 
       setBoards(boardsWithAnalytics);
     } catch (err) {
-      console.error("Error fetching analytics:", err);
+      // Error fetching analytics
     } finally {
       setLoading(false);
     }

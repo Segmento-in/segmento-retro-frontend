@@ -91,7 +91,7 @@ function Integrations() {
         setSelectedTeam(teamsArray[0].id);
       }
     } catch (err) {
-      console.error("Failed to load teams:", err);
+      // Failed to load teams
     }
   };
 
@@ -100,7 +100,7 @@ function Integrations() {
       const data = await api.get(`/api/teams/${teamId}/slack-webhook`);
       setWebhookUrl(data.webhookUrl || "");
     } catch (error) {
-      console.error("Failed to load webhook:", error);
+      // Failed to load webhook
     }
   };
 
@@ -133,7 +133,6 @@ function Integrations() {
       await api.put(`/api/teams/${selectedTeam}/slack-webhook`, { webhookUrl });
       setMessage({ type: "success", text: "Slack webhook saved successfully!" });
     } catch (error) {
-      console.error("Error saving webhook:", error);
       setMessage({ type: "error", text: "Failed to save webhook" });
     } finally {
       setSaving(false);

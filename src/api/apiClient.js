@@ -60,12 +60,8 @@ const api = {
       // Check if same request is already pending (deduplication)
       const cacheKey = getCacheKey('GET', url);
       if (pendingRequests.has(cacheKey)) {
-        console.log('🔄 Reusing pending request:', cacheKey);
         return await pendingRequests.get(cacheKey);
       }
-      
-      // Log new request
-      console.log('🚀 New API request:', cacheKey);
       
       // Create new request promise
       const requestPromise = (async () => {
@@ -80,8 +76,6 @@ const api = {
             },
           });
           const result = await handleResponse(response);
-          const endTime = performance.now();
-          console.log(`✅ Request completed in ${(endTime - startTime).toFixed(0)}ms:`, cacheKey);
           return result;
         } finally {
           // Remove from pending requests after completion
@@ -94,7 +88,6 @@ const api = {
       
       return await requestPromise;
     } catch (error) {
-      console.error("GET request failed:", endpoint, error);
       throw error;
     }
   },
@@ -114,7 +107,6 @@ const api = {
       });
       return await handleResponse(response);
     } catch (error) {
-      console.error("POST request failed:", endpoint, error);
       throw error;
     }
   },
@@ -134,7 +126,6 @@ const api = {
       });
       return await handleResponse(response);
     } catch (error) {
-      console.error("PUT request failed:", endpoint, error);
       throw error;
     }
   },
@@ -154,7 +145,6 @@ const api = {
       });
       return await handleResponse(response);
     } catch (error) {
-      console.error("PATCH request failed:", endpoint, error);
       throw error;
     }
   },
@@ -173,7 +163,6 @@ const api = {
       });
       return await handleResponse(response);
     } catch (error) {
-      console.error("DELETE request failed:", endpoint, error);
       throw error;
     }
   },

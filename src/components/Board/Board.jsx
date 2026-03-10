@@ -252,7 +252,7 @@ function Board() {
         [String(columnId)]: Array.isArray(data) ? data : [],
       }));
     } catch (err) {
-      console.error("Error fetching column cards:", err);
+      // Error fetching column cards
     }
   }, []);
 
@@ -282,7 +282,6 @@ function Board() {
             const columnCards = await api.get(`/api/cards/column/${column.id}`);
             cardsByColumn[String(column.id)] = Array.isArray(columnCards) ? columnCards : [];
           } catch (err) {
-            console.error(`Error fetching cards for column ${column.id}:`, err);
             cardsByColumn[String(column.id)] = [];
           }
         })
@@ -323,7 +322,7 @@ function Board() {
       setCardVoteCounts(voteCounts);
       setUserVotesByCard(userVoteCounts);
     } catch (err) {
-      console.error("Error fetching voting info:", err);
+      // Error fetching voting info
     }
   }, [boardId, currentUserId]);
 
@@ -364,7 +363,6 @@ function Board() {
         }
         applyOptimistic();
       } catch (err) {
-        console.error("Error adding vote:", err);
         alert("Failed to add vote: " + err.message);
       }
     },
@@ -394,7 +392,6 @@ function Board() {
           [cardId]: Math.max(0, (p[cardId] || 0) - 1),
         }));
       } catch (err) {
-        console.error("Error removing vote:", err);
         alert("Failed to remove vote: " + err.message);
       }
     },
@@ -503,7 +500,6 @@ function Board() {
         setOpenColumnMenu(null);
         await fetchBoard();
       } catch (err) {
-        console.error("Error updating column:", err);
         alert("Error updating column: " + (err.message || "Unknown"));
       }
     },

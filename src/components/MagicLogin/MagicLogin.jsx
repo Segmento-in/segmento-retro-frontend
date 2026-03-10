@@ -14,7 +14,6 @@ function MagicLogin() {
     const boardId = searchParams.get('boardId');
     
     if (!token) {
-      console.error('No token provided in URL');
       setStatus('error');
       return;
     }
@@ -52,7 +51,6 @@ function MagicLogin() {
         }, 1500);
       })
       .catch((error) => {
-        console.error('Magic login failed:', error);
         setStatus('error');
       });
   }, [searchParams, navigate]);

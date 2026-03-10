@@ -66,8 +66,6 @@ function TemplateSelector({ onSelectTemplate, onClose }) {
       const templatesArray = data.content ? data.content : (Array.isArray(data) ? data : []);
       setTemplates(templatesArray);
     } catch (err) {
-      console.error("Error fetching templates:", err);
-
       if (err.status === 401) {
         setError("Please login to view templates");
       } else if (err.status === 404) {
@@ -102,7 +100,7 @@ function TemplateSelector({ onSelectTemplate, onClose }) {
           return;
         }
       } catch (err) {
-        console.error('Failed to fetch columns separately:', err);
+        // Failed to fetch columns separately
       }
     }
     

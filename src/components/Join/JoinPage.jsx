@@ -45,7 +45,6 @@ export default function JoinPage() {
         setStatus("form");
       }
     } catch (err) {
-      console.error("Error checking user status:", err);
       setStatus("form");
     }
   }
@@ -133,7 +132,6 @@ export default function JoinPage() {
         navigate("/retroDashboard");
       }, 1500);
     } catch (err) {
-      console.error("Error accepting invitation:", err);
       setStatus("error");
       setMessage(err.message || "Failed to join the team. The invitation link may be expired or invalid.");
       setSubmitting(false);

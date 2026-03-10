@@ -7,7 +7,6 @@ import CreateTeamModal from "../Common/CreateTeamModal";
 import TeamCard from "../Common/TeamCard";
 import api from "../../api";
 import { getInitials, formatDate, PALETTE } from "../../utils";
-import { formatRelativeTime } from "../../utils/formatDate";
 import { useClickOutside } from "../../hooks";
 import "./dashboard.css";
 
@@ -20,9 +19,6 @@ function BoardCard({ board, onClick, onDelete, currentUserId }) {
   useClickOutside(menuRef, () => setShowMenu(false), showMenu);
 
   const activeColumns = board.columns?.filter(col => !col.deleted) || [];
-  const isCurrentUser = board.createdBy?.id === currentUserId;
-  const creatorName = isCurrentUser ? "you" : (board.createdBy?.name || board.createdBy?.username || "Unknown");
-  const relativeTime = formatRelativeTime(board.createdAt);
 
   return (
     <div
@@ -75,9 +71,6 @@ function BoardCard({ board, onClick, onDelete, currentUserId }) {
           </div>
           <div className="dash-card-info">
             <h3 className="dash-card-title">{board.title}</h3>
-            <div className="dash-card-creator">
-              <span className="creator-label">by</span> {creatorName}
-            </div>
           </div>
         </div>
 
@@ -106,20 +99,6 @@ function BoardCard({ board, onClick, onDelete, currentUserId }) {
           <div className="dash-card-team" style={{ color: accent }}>
             <FiUsers size={12} />
             <span>{board.team.name || board.teamName}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="dash-card-footer">
-        {relativeTime.text && (
-          <div 
-            className="dash-card-time-chip" 
-            style={{ 
-              background: `linear-gradient(135deg, ${relativeTime.color}25, ${relativeTime.color}35)`,
-              color: relativeTime.color
-            }}
-          >
-            {relativeTime.text}
           </div>
         )}
       </div>
@@ -165,10 +144,10 @@ function TeamsTab() {
     const query = searchQuery.toLowerCase();
     return (
       team.name?.toLowerCase().includes(query) ||
-      team.members?.some(
-        (m) =>
-          m.name?.toLowerCase().includes(query) ||
-          m.email?.toLowerCase().includes(query),
+      team.memberDetails?.some(
+        (member) =>
+          member.name?.toLowerCase().includes(query) ||
+          member.email?.toLowerCase().includes(query),
       )
     );
   });
@@ -474,7 +453,6 @@ function Dashboard() {
       // Use boards as-is - backend should return complete data
       setUserBoards(boardsArray);
     } catch (err) {
-      console.error('Error in fetchUserBoards:', err);
       setBoardsError(err.message || "Failed to load boards");
     } finally {
       setLoadingBoards(false);
@@ -626,7 +604,6 @@ function Dashboard() {
           api.get(`/api/board-columns/board/${board.id}`)
             .then(columns => ({ boardId: board.id, columns }))
             .catch(err => {
-              console.error(`Failed to fetch columns for board ${board.id}:`, err);
               return { boardId: board.id, columns: [] };
             })
         );
@@ -641,7 +618,7 @@ function Dashboard() {
           })
         );
       } catch (err) {
-        console.error('Error fetching columns for visible boards:', err);
+        // Error fetching columns for visible boards
       }
     }
 

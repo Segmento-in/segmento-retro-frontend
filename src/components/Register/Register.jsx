@@ -70,7 +70,7 @@ function Register() {
             }
           }
         } catch (e) {
-          console.error("Failed to decode JWT payload", e);
+          // Failed to decode JWT payload
         }
 
         // Redirect to the page they were trying to access

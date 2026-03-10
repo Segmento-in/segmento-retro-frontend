@@ -49,10 +49,10 @@ function Teams() {
     const query = searchQuery.toLowerCase();
     return (
       team.name?.toLowerCase().includes(query) ||
-      team.members?.some(
-        (m) =>
-          m.name?.toLowerCase().includes(query) ||
-          m.email?.toLowerCase().includes(query),
+      team.memberDetails?.some(
+        (member) =>
+          member.name?.toLowerCase().includes(query) ||
+          member.email?.toLowerCase().includes(query),
       )
     );
   });
@@ -144,7 +144,14 @@ function Teams() {
               </button>
             )}
             {paginatedTeams.map((team, idx) => (
-              <TeamCard key={team.id} team={team} idx={startIndex + idx} />
+              <TeamCard 
+                key={team.id} 
+                team={team} 
+                idx={startIndex + idx}
+                onTeamDeleted={(teamId) => {
+                  setTeams(prevTeams => prevTeams.filter(t => t.id !== teamId));
+                }}
+              />
             ))}
           </div>
 

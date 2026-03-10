@@ -20,7 +20,6 @@ const TeamSlackSettings = ({ teamId }) => {
       const data = await api.get(`/api/teams/${teamId}/slack-webhook`);
       setWebhookUrl(data.webhookUrl || '');
     } catch (error) {
-      console.error('Failed to load webhook:', error);
       setMessage({ type: 'error', text: 'Failed to load Slack webhook' });
     } finally {
       setLoading(false);
@@ -34,7 +33,6 @@ const TeamSlackSettings = ({ teamId }) => {
       await api.put(`/api/teams/${teamId}/slack-webhook`, { webhookUrl });
       setMessage({ type: 'success', text: 'Slack webhook saved successfully!' });
     } catch (error) {
-      console.error('Error saving webhook:', error);
       setMessage({ type: 'error', text: 'Failed to save webhook' });
     } finally {
       setSaving(false);

@@ -39,7 +39,6 @@ function ProfileDropdown() {
           localStorage.setItem("userId", data.id);
         }
       } catch (err) {
-        console.error("Failed to fetch user profile:", err);
         setUserProfile({
           name: localStorage.getItem("name") || "User",
           email: localStorage.getItem("email") || "No email",

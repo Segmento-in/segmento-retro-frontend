@@ -81,7 +81,6 @@ export default function CreateTeamModal({ onClose, onCreated }) {
             `Team created successfully! Invitation emails sent to ${inviteEmails.length} recipient(s).`
           );
         } catch (inviteErr) {
-          console.error("Error sending invitations:", inviteErr);
           if (inviteErr.message?.includes("403")) {
             alert("Team created successfully, but you don't have permission to send invitations.");
           } else {
