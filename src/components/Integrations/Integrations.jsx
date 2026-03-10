@@ -64,68 +64,8 @@ const INTEGRATIONS = [
       "Configure notification preferences",
       "Interact with retros from Teams"
     ]
-  },
-  {
-    id: "github",
-    name: "GitHub",
-    icon: "G",
-    color: "#24292e",
-    status: "coming-soon",
-    description: "Link retrospective items to GitHub issues and pull requests. Track engineering improvements.",
-    features: [
-      "Link to issues & PRs",
-      "Auto-create issues",
-      "Commit tracking",
-      "Repository insights"
-    ],
-    howItWorks: [
-      "Authorize GitHub access",
-      "Select repositories to connect",
-      "Link cards to issues/PRs",
-      "Auto-create issues from action items"
-    ]
-  },
-  {
-    id: "trello",
-    name: "Trello",
-    icon: "T",
-    color: "#0079BF",
-    status: "coming-soon",
-    description: "Export action items to Trello boards and keep your team organized across platforms.",
-    features: [
-      "Export to Trello boards",
-      "Card synchronization",
-      "Label mapping",
-      "Due date sync"
-    ],
-    howItWorks: [
-      "Connect your Trello account",
-      "Map retro boards to Trello boards",
-      "Export cards as Trello cards",
-      "Sync updates between platforms"
-    ]
-  },
-  {
-    id: "webhook",
-    name: "Webhooks",
-    icon: "W",
-    color: "#667eea",
-    status: "coming-soon",
-    description: "Create custom integrations with webhooks. Send retro data to any external service.",
-    features: [
-      "Custom endpoints",
-      "Event filtering",
-      "Payload customization",
-      "Retry logic"
-    ],
-    howItWorks: [
-      "Create a webhook endpoint",
-      "Configure event triggers",
-      "Customize payload format",
-      "Test and activate webhook"
-    ]
   }
-];
+]
 
 function Integrations() {
   const [selectedIntegration, setSelectedIntegration] = useState(null);
